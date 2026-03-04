@@ -68,6 +68,12 @@
 
 详细更新日志见 [CHANGELOG.md](./CHANGELOG.md)
 
+## 声明
+
+> **本脚本仅供学习交流、技术探讨使用。** 请务必遵守 [linux.do](https://linux.do) 社区规则，合理使用脚本功能。因使用不当导致的账号封禁等一切后果，与作者无关，请谨慎使用。
+
+如果觉得这个项目对你有帮助，欢迎点个 Star 支持一下！
+
 ## License
 
 [MIT](https://opensource.org/licenses/MIT)
