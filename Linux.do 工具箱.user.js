@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do 工具箱
 // @namespace    https://linux.do/
-// @version      3.9.0
+// @version      3.9.1
 // @description  悬浮球工具箱：个人信息（升级条件+积分+CDK）、时间线、快速回复、自动刷贴。可拖拽悬浮球，11主题切换，按 ESC 显示/隐藏。
 // @author       You
 // @match        https://linux.do/*
@@ -432,6 +432,12 @@
     }
     .ld-refresh-btn:hover { background: var(--bg-card-hover); color: var(--text-1); }
     .ld-refresh-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .ld-jump-btn {
+      background: var(--bg-card); border: none; color: var(--text-3);
+      font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+      transition: all .2s;
+    }
+    .ld-jump-btn:hover { background: var(--bg-card-hover); color: var(--text-1); }
     .ld-card {
       background: var(--bg-card); padding: 10px 12px;
       border-radius: 8px; margin-bottom: 8px;
@@ -769,6 +775,12 @@
       font-size: 13px; font-weight: 700; color: var(--gold); margin-right: 2px;
     }
     .ld-brief-val.cyan { color: var(--cyan); }
+    .ld-brief-jump {
+      cursor: pointer;
+      text-decoration: underline dotted transparent;
+      transition: text-decoration-color .2s;
+    }
+    .ld-brief-jump:hover { text-decoration-color: currentColor; }
     .ld-detail-section {
       overflow: hidden; transition: max-height .35s ease, opacity .25s ease;
       max-height: 2000px; opacity: 1;
@@ -895,6 +907,8 @@
     theme: GM_getValue("ld_theme", "ocean"),
     username: null,
     userDataCache: null,
+    creditLoggedIn: false,
+    cdkLoggedIn: false,
     // 时间线
     timelineTopics: [],
     timelinePage: 0,
@@ -1321,7 +1335,8 @@
     html += `<div class="ld-section-title">
       <span>💰 Credit 积分</span>
       <div>
-        <span class="ld-brief-val" id="ld-credit-brief">--</span>
+        <span class="ld-brief-val ld-brief-jump" id="ld-credit-brief" data-jump="credit">--</span>
+        <button class="ld-jump-btn" data-jump="credit">登录</button>
         <button class="ld-expand-btn" data-target="ld-credit-detail">▶</button>
         <button class="ld-refresh-btn" data-action="refresh-credit">刷新</button>
       </div>
@@ -1334,7 +1349,8 @@
     html += `<div class="ld-section-title">
       <span>🎮 CDK 分数</span>
       <div>
-        <span class="ld-brief-val cyan" id="ld-cdk-brief">--</span>
+        <span class="ld-brief-val cyan ld-brief-jump" id="ld-cdk-brief" data-jump="cdk">--</span>
+        <button class="ld-jump-btn" data-jump="cdk">登录</button>
         <button class="ld-expand-btn" data-target="ld-cdk-detail">▶</button>
         <button class="ld-refresh-btn" data-action="refresh-cdk">刷新</button>
       </div>
@@ -1361,6 +1377,15 @@
       else if (b.dataset.action === "refresh-cdk") b.addEventListener("click", () => loadCdkInfo(true));
       else if (b.dataset.action === "refresh-all") b.addEventListener("click", () => { state.userDataCache = null; loadUserInfo(true); });
     });
+
+    // 绑定跳转：未登录去登录页，已登录去详情页
+    ct.querySelectorAll(".ld-jump-btn, .ld-brief-jump").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openInfoSite(el.dataset.jump);
+      });
+    });
+    syncInfoJumpButtons();
   }
 
   function getUpgradeBrief(tl, data) {
@@ -1565,6 +1590,8 @@
 
     const userData = await fetchCreditUserInfo();
     if (!userData) {
+      state.creditLoggedIn = false;
+      syncInfoJumpButtons();
       updateBriefVal("ld-credit-brief", "未登录");
       area.innerHTML = `<div class="ld-login-prompt">未登录 credit.linux.do<br><a href="https://credit.linux.do" target="_blank" class="ld-login-btn">去登录</a></div>`;
       return;
@@ -1586,7 +1613,36 @@
     if (el) el.textContent = text;
   }
 
+  function getInfoSiteUrl(type) {
+    if (type === "credit") return state.creditLoggedIn ? "https://credit.linux.do/home" : "https://credit.linux.do";
+    if (type === "cdk") return state.cdkLoggedIn ? "https://cdk.linux.do/dashboard" : "https://cdk.linux.do";
+    return "";
+  }
+
+  function openInfoSite(type) {
+    const url = getInfoSiteUrl(type);
+    if (!url) return;
+    window.open(url, "_blank", "noopener");
+  }
+
+  function syncInfoJumpButtons() {
+    [
+      { type: "credit", loggedIn: state.creditLoggedIn },
+      { type: "cdk", loggedIn: state.cdkLoggedIn },
+    ].forEach(({ type, loggedIn }) => {
+      const btn = document.querySelector(`.ld-jump-btn[data-jump="${type}"]`);
+      if (btn) {
+        btn.textContent = loggedIn ? "详情" : "登录";
+        btn.title = loggedIn ? "已登录，点击查看详情页" : "未登录，点击前往登录页";
+      }
+      const brief = document.querySelector(`.ld-brief-jump[data-jump="${type}"]`);
+      if (brief) brief.title = loggedIn ? "已登录，点击查看详情页" : "未登录，点击前往登录页";
+    });
+  }
+
   function renderCreditInfo(area, userData, dailyStats, leaderboard) {
+    state.creditLoggedIn = true;
+    syncInfoJumpButtons();
     const balance = userData.available_balance || "0";
     const communityBalance = userData.community_balance || "0";
     const dailyLimit = userData.remain_quota || "0";
@@ -1751,11 +1807,15 @@
       return;
     }
 
+    state.cdkLoggedIn = false;
+    syncInfoJumpButtons();
     updateBriefVal("ld-cdk-brief", "未登录");
     area.innerHTML = `<div class="ld-login-prompt">未登录/无法连接 CDK<br><a href="https://cdk.linux.do" target="_blank" class="ld-login-btn ld-cdk-login-btn">去授权</a></div>`;
   }
 
   function renderCdkInfo(area, cdkData) {
+    state.cdkLoggedIn = true;
+    syncInfoJumpButtons();
     const userData = cdkData.user || cdkData;
     const receivedData = cdkData.received || null;
     const score = userData.score || 0;
