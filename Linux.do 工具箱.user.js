@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do 工具箱
 // @namespace    https://linux.do/
-// @version      3.9.1
+// @version      3.9.2
 // @description  悬浮球工具箱：个人信息（升级条件+积分+CDK）、时间线、快速回复、自动刷贴。可拖拽悬浮球，11主题切换，按 ESC 显示/隐藏。
 // @author       You
 // @match        https://linux.do/*
@@ -589,6 +589,15 @@
     .ld-topic-item.unread .ld-topic-title { color: var(--text-1); }
     .ld-topic-item.read { opacity: .55; }
     .ld-topic-item.read .ld-topic-title { color: var(--text-3); }
+    .ld-topic-item.ld-topic-item-focus {
+      box-shadow: 0 0 0 1px rgba(102,126,234,.55), 0 0 18px rgba(102,126,234,.35);
+      animation: ld-topic-focus 1.2s ease-out;
+    }
+    @keyframes ld-topic-focus {
+      from { transform: translateX(0); }
+      35% { transform: translateX(4px); }
+      to { transform: translateX(0); }
+    }
     .ld-read-dot {
       display: inline-block; padding: 1px 5px; border-radius: 3px;
       margin-right: 5px; flex-shrink: 0; vertical-align: middle;
@@ -897,6 +906,23 @@
     setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 300); }, 2000);
   }
 
+  const TIMELINE_RESTORE_KEY = "ld_timeline_restore_ctx";
+  const TIMELINE_RESTORE_TTL = 30 * 60 * 1000;
+  const TIMELINE_RESTORE_MAX_TOPICS = 800;
+
+  function readTimelineRestoreContextOnce() {
+    try {
+      const raw = sessionStorage.getItem(TIMELINE_RESTORE_KEY);
+      if (!raw) return null;
+      sessionStorage.removeItem(TIMELINE_RESTORE_KEY);
+      const data = JSON.parse(raw);
+      if (!data?.ts || Date.now() - data.ts > TIMELINE_RESTORE_TTL) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
   // ==================== 状态 ====================
   const state = {
     ballVisible: true,
@@ -917,6 +943,8 @@
     allCategoryIds: [],
     tlFilterCat: "all",
     tlFilterRead: "all",
+    timelineRestoreCtx: null,
+    shouldAutoOpenPanel: false,
     // 自动刷贴（sessionStorage 窗口独立）
     autoRunning: false,
     isScrolling: false,
@@ -936,6 +964,19 @@
     pageLoadTime: 0,
     lastPageUrl: "",
   };
+
+  const timelineRestoreCtx = readTimelineRestoreContextOnce();
+  if (timelineRestoreCtx) {
+    if (Array.isArray(timelineRestoreCtx.topics) && timelineRestoreCtx.topics.length) {
+      state.timelineTopics = timelineRestoreCtx.topics;
+      state.timelinePage = Math.max(0, Number(timelineRestoreCtx.timelinePage) || 0);
+    }
+    if (timelineRestoreCtx.tlFilterCat != null) state.tlFilterCat = String(timelineRestoreCtx.tlFilterCat);
+    if (timelineRestoreCtx.tlFilterRead != null) state.tlFilterRead = String(timelineRestoreCtx.tlFilterRead);
+    state.timelineRestoreCtx = timelineRestoreCtx;
+    state.activeTab = 1;
+    state.shouldAutoOpenPanel = true;
+  }
 
   // ==================== 获取用户名 ====================
   function getCurrentUsername() {
@@ -1235,7 +1276,10 @@
     tabContents[i].classList.add("active");
     if (i === 0) loadUserInfo();
     if (i === 1 && !state.timelineTopics.length) loadTimeline();
-    else if (i === 1) renderTimeline();
+    else if (i === 1) {
+      if (!state.categoriesMap) ensureCategories().then(() => renderTimeline());
+      else renderTimeline();
+    }
     if (i === 2) renderQuickReplyTab();
     if (i === 3) renderAutoReadTab();
   }
@@ -1263,7 +1307,12 @@
     }
   });
 
-  switchTab(state.activeTab);
+  if (state.shouldAutoOpenPanel) {
+    togglePanel(true);
+    state.shouldAutoOpenPanel = false;
+  } else {
+    switchTab(state.activeTab);
+  }
 
   // ==================== Tab1: 个人信息 ====================
   async function loadUserInfo(force = false) {
@@ -1984,7 +2033,7 @@
       if (!t.isRead && catColor) div.style.cssText = catColor;
       const readTag = t.isRead ? '<span class="ld-read-dot read">已读</span>' : '<span class="ld-read-dot unread">未读</span>';
       div.innerHTML = `
-        <div class="ld-topic-title">${readTag}<a href="${BASE_URL}/t/${t.slug}/${t.id}" target="_blank">${escapeHtml(t.title)}</a></div>
+        <div class="ld-topic-title">${readTag}<a class="ld-topic-link" data-topic-id="${t.id}" href="${BASE_URL}/t/${t.slug}/${t.id}" target="_blank">${escapeHtml(t.title)}</a></div>
         <div class="ld-topic-meta">
           ${t.categoryName ? `<span class="category" style="${catStyle}">${escapeHtml(t.categoryName)}</span>` : ""}
           <span>@${escapeHtml(t.posterUsername)}</span>
@@ -2054,6 +2103,62 @@
     if (state.tlFilterRead === "unread") list = list.filter((t) => !t.isRead);
     else if (state.tlFilterRead === "read") list = list.filter((t) => t.isRead);
     return list;
+  }
+
+  function saveTimelineRestoreContext(topicId) {
+    const ct = tabContents[1];
+    const payload = {
+      ts: Date.now(),
+      topicId: Number(topicId) || 0,
+      scrollTop: ct?.scrollTop || 0,
+      timelinePage: state.timelinePage,
+      tlFilterCat: state.tlFilterCat,
+      tlFilterRead: state.tlFilterRead,
+      topics: Array.isArray(state.timelineTopics)
+        ? state.timelineTopics.slice(0, TIMELINE_RESTORE_MAX_TOPICS)
+        : [],
+    };
+    try {
+      sessionStorage.setItem(TIMELINE_RESTORE_KEY, JSON.stringify(payload));
+    } catch {}
+  }
+
+  function bindTimelineTopicClickDelegation(ct) {
+    if (ct.dataset.tlTopicJumpBound === "1") return;
+    ct.dataset.tlTopicJumpBound = "1";
+    ct.addEventListener("click", (e) => {
+      const link = e.target.closest("a.ld-topic-link");
+      if (!link || !ct.contains(link)) return;
+      if (e.defaultPrevented) return;
+      if (e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      saveTimelineRestoreContext(link.dataset.topicId);
+      state.activeTab = 1;
+      GM_setValue("ld_activeTab", 1);
+      window.location.href = link.href;
+    });
+  }
+
+  function restoreTimelinePosition(ct) {
+    const ctx = state.timelineRestoreCtx;
+    if (!ctx) return;
+    state.timelineRestoreCtx = null;
+
+    requestAnimationFrame(() => {
+      const targetLink = ct.querySelector(`a.ld-topic-link[data-topic-id="${ctx.topicId}"]`);
+      const targetItem = targetLink?.closest(".ld-topic-item");
+      if (targetItem) {
+        const top = targetItem.offsetTop - Math.max(40, Math.floor(ct.clientHeight * 0.28));
+        ct.scrollTop = Math.max(0, top);
+        targetItem.classList.add("ld-topic-item-focus");
+        setTimeout(() => targetItem.classList.remove("ld-topic-item-focus"), 1800);
+        return;
+      }
+      if (Number.isFinite(ctx.scrollTop)) {
+        ct.scrollTop = Math.max(0, ctx.scrollTop);
+      }
+    });
   }
 
   function renderTimeline() {
@@ -2143,7 +2248,7 @@
         const unreadInfo = !t.isRead && t.unreadPosts > 0 ? ` · ${t.unreadPosts}条未读` : "";
         const readTag = t.isRead ? '<span class="ld-read-dot read">已读</span>' : '<span class="ld-read-dot unread">未读</span>';
         h += `<div class="ld-topic-item ${readClass}" ${t.isRead ? "" : catColor}>
-          <div class="ld-topic-title">${readTag}<a href="${url}" target="_blank">${escapeHtml(t.title)}</a></div>
+          <div class="ld-topic-title">${readTag}<a class="ld-topic-link" data-topic-id="${t.id}" href="${url}" target="_blank">${escapeHtml(t.title)}</a></div>
           <div class="ld-topic-meta">
             ${t.categoryName ? `<span class="category" ${catStyle}>${escapeHtml(t.categoryName)}</span>` : ""}
             <span>@${escapeHtml(t.posterUsername)}</span>
@@ -2168,6 +2273,8 @@
 
     // 无限滚动：IntersectionObserver 监听哨兵元素
     setupTimelineInfiniteScroll(ct);
+    bindTimelineTopicClickDelegation(ct);
+    restoreTimelinePosition(ct);
   }
 
   // 无限滚动
