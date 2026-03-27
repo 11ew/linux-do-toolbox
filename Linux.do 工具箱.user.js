@@ -3365,5 +3365,5 @@
   // 初始化调用（延迟到 Tab 渲染之后）
   setTimeout(() => resumeAutoRead(), 500);
 
-  console.log("[Linux.do 工具箱] v3.6.0 已加载");
+  console.log("[Linux.do 工具箱] v3.9.2 已加载");
 })();
