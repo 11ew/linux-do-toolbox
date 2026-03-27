@@ -330,7 +330,7 @@
       width: 46px; height: 46px; border-radius: 50%;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       cursor: grab; display: flex; align-items: center; justify-content: center;
-      transition: box-shadow .4s ease, opacity .3s ease, left .3s ease, right .3s ease;
+      transition: box-shadow .4s ease, opacity .3s ease, top .3s ease, right .3s ease, bottom .3s ease, left .3s ease, transform .3s ease;
       user-select: none; touch-action: none;
     }
     #ld-toolbox-ball:active { cursor: grabbing; }
@@ -341,12 +341,26 @@
     #ld-toolbox-ball.side-left {
       box-shadow: 8px 0 20px 6px rgba(102,126,234,0.35), 0 4px 12px rgba(118,75,162,0.25);
     }
+    #ld-toolbox-ball.side-top {
+      box-shadow: 0 8px 20px 6px rgba(102,126,234,0.35), 0 4px 12px rgba(118,75,162,0.25);
+    }
+    #ld-toolbox-ball.side-bottom {
+      box-shadow: 0 -8px 20px 6px rgba(102,126,234,0.35), 0 4px 12px rgba(118,75,162,0.25);
+    }
     #ld-toolbox-ball:hover {
       box-shadow: 0 0 28px 8px rgba(102,126,234,0.5), 0 4px 15px rgba(118,75,162,0.3);
+    }
+    #ld-toolbox-ball.side-right:hover {
       right: 0 !important; left: auto !important;
     }
     #ld-toolbox-ball.side-left:hover {
       left: 0 !important; right: auto !important;
+    }
+    #ld-toolbox-ball.side-top:hover {
+      top: 0 !important; bottom: auto !important;
+    }
+    #ld-toolbox-ball.side-bottom:hover {
+      bottom: 0 !important; top: auto !important;
     }
     #ld-toolbox-ball .ball-logo {
       font-size: 20px; font-weight: 900; font-style: italic;
@@ -359,26 +373,32 @@
 
     /* === 面板 === */
     #ld-toolbox-panel {
-      position: fixed; top: 50%; transform: translateY(-50%);
-      width: 390px; max-height: 85vh;
+      position: fixed;
+      width: 390px; height: 520px;
+      min-width: 320px; min-height: 280px;
+      max-width: calc(100vw - 24px); max-height: calc(100vh - 24px);
       background: var(--bg-main);
-      border-radius: 16px 0 0 16px;
-      box-shadow: -8px 0 40px rgba(0,0,0,0.25);
       z-index: 99998;
-      transition: right .35s cubic-bezier(.4,0,.2,1), left .35s cubic-bezier(.4,0,.2,1);
+      transition: transform .35s cubic-bezier(.4,0,.2,1), opacity .2s ease;
       display: flex; flex-direction: column; overflow: hidden;
       color: var(--text-2);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      resize: none;
+      box-sizing: border-box;
+      transform: translate3d(0, 0, 0);
+      opacity: .98;
     }
-    #ld-toolbox-panel.side-right { right: -420px; left: auto; border-radius: 16px 0 0 16px; }
-    #ld-toolbox-panel.side-right.open { right: 0; }
-    #ld-toolbox-panel.side-left { left: -420px; right: auto; border-radius: 0 16px 16px 0; }
-    #ld-toolbox-panel.side-left.open { left: 0; }
+    #ld-toolbox-panel.side-right { border-radius: 16px 0 0 16px; box-shadow: -8px 0 40px rgba(0,0,0,0.25); }
+    #ld-toolbox-panel.side-left { border-radius: 0 16px 16px 0; box-shadow: 8px 0 40px rgba(0,0,0,0.25); }
+    #ld-toolbox-panel.side-top { border-radius: 0 0 16px 16px; box-shadow: 0 8px 40px rgba(0,0,0,0.25); }
+    #ld-toolbox-panel.side-bottom { border-radius: 16px 16px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,0.25); }
+    #ld-toolbox-panel.dragging { transition: none; user-select: none; }
 
     .ld-panel-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 12px 16px; background: var(--bg-header);
       border-bottom: 1px solid var(--border); flex-shrink: 0;
+      cursor: move;
     }
     .ld-panel-header .title { font-size: 15px; font-weight: 700; color: var(--text-1); }
     .ld-header-actions { display: flex; align-items: center; gap: 4px; }
@@ -388,6 +408,25 @@
       transition: all .2s; line-height: 1;
     }
     .ld-theme-btn:hover, .ld-panel-close:hover { color: var(--text-1); background: var(--bg-card); }
+    .ld-panel-resizer {
+      position: absolute; width: 16px; height: 16px; z-index: 3;
+      border-radius: 0 0 8px 0;
+      background:
+        linear-gradient(135deg, transparent 0 42%, rgba(255,255,255,.18) 42% 50%, transparent 50% 58%, rgba(255,255,255,.32) 58% 66%, transparent 66%);
+      opacity: .8;
+    }
+    #ld-toolbox-panel[data-resize-corner="bottom-right"] .ld-panel-resizer {
+      right: 2px; bottom: 2px; cursor: nwse-resize;
+    }
+    #ld-toolbox-panel[data-resize-corner="bottom-left"] .ld-panel-resizer {
+      left: 2px; bottom: 2px; cursor: nesw-resize; transform: scaleX(-1);
+    }
+    #ld-toolbox-panel[data-resize-corner="top-right"] .ld-panel-resizer {
+      right: 2px; top: 2px; cursor: nesw-resize; transform: scaleY(-1);
+    }
+    #ld-toolbox-panel[data-resize-corner="top-left"] .ld-panel-resizer {
+      left: 2px; top: 2px; cursor: nwse-resize; transform: scale(-1);
+    }
 
     /* 标签页 */
     .ld-tab-nav {
@@ -924,12 +963,50 @@
   }
 
   // ==================== 状态 ====================
+  const DOCK_EDGES = ["top", "right", "bottom", "left"];
+  const BALL_SIZE = 46;
+  const BALL_HIDE_RATIO = 0.65;
+  const PANEL_VIEWPORT_MARGIN = 12;
+  const PANEL_MIN_WIDTH = 320;
+  const PANEL_MIN_HEIGHT = 280;
+  const PANEL_DEFAULT_WIDTH = 390;
+  const PANEL_DEFAULT_HEIGHT = 520;
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function normalizeDockEdge(value, fallback = "right") {
+    return DOCK_EDGES.includes(value) ? value : fallback;
+  }
+
+  function normalizeDockOffset(value) {
+    const num = Number(value);
+    return clamp(Number.isFinite(num) ? num : 0.5, 0.05, 0.95);
+  }
+
+  function clampPanelWidth(value) {
+    const max = Math.max(PANEL_MIN_WIDTH, window.innerWidth - PANEL_VIEWPORT_MARGIN * 2);
+    const num = Number(value);
+    return Math.round(clamp(Number.isFinite(num) ? num : PANEL_DEFAULT_WIDTH, PANEL_MIN_WIDTH, max));
+  }
+
+  function clampPanelHeight(value) {
+    const max = Math.max(PANEL_MIN_HEIGHT, window.innerHeight - PANEL_VIEWPORT_MARGIN * 2);
+    const num = Number(value);
+    return Math.round(clamp(Number.isFinite(num) ? num : PANEL_DEFAULT_HEIGHT, PANEL_MIN_HEIGHT, max));
+  }
+
+  const legacyDockEdge = normalizeDockEdge(GM_getValue("ld_ballSide", "right"));
+  const legacyDockOffset = normalizeDockOffset(GM_getValue("ld_ballOffset", 0.5));
   const state = {
     ballVisible: true,
     panelOpen: false,
     activeTab: GM_getValue("ld_activeTab", 0),
-    ballSide: GM_getValue("ld_ballSide", "right"),
-    ballOffset: GM_getValue("ld_ballOffset", 0.5),
+    dockEdge: normalizeDockEdge(GM_getValue("ld_dockEdge", legacyDockEdge), legacyDockEdge),
+    dockOffset: normalizeDockOffset(GM_getValue("ld_dockOffset", legacyDockOffset)),
+    panelWidth: clampPanelWidth(GM_getValue("ld_panelWidth", PANEL_DEFAULT_WIDTH)),
+    panelHeight: clampPanelHeight(GM_getValue("ld_panelHeight", PANEL_DEFAULT_HEIGHT)),
     theme: GM_getValue("ld_theme", "ocean"),
     username: null,
     userDataCache: null,
@@ -1003,30 +1080,107 @@
   }
 
   // ==================== DOM 构建 ====================
+  function persistDockState() {
+    GM_setValue("ld_dockEdge", state.dockEdge);
+    GM_setValue("ld_dockOffset", state.dockOffset);
+  }
+
+  function persistPanelSize() {
+    GM_setValue("ld_panelWidth", state.panelWidth);
+    GM_setValue("ld_panelHeight", state.panelHeight);
+  }
+
+  function getClosestEdgeFromPoint(x, y) {
+    const distances = {
+      left: x,
+      right: window.innerWidth - x,
+      top: y,
+      bottom: window.innerHeight - y,
+    };
+    return Object.entries(distances).sort((a, b) => a[1] - b[1])[0][0];
+  }
+
+  function getClosestEdgeFromRect(rect) {
+    const distances = {
+      left: rect.left,
+      right: window.innerWidth - rect.right,
+      top: rect.top,
+      bottom: window.innerHeight - rect.bottom,
+    };
+    return Object.entries(distances).sort((a, b) => a[1] - b[1])[0][0];
+  }
+
+  function getDockOffsetFromPoint(edge, x, y) {
+    return normalizeDockOffset(edge === "left" || edge === "right" ? y / window.innerHeight : x / window.innerWidth);
+  }
+
+  function getDockOffsetFromRect(edge, rect) {
+    return getDockOffsetFromPoint(edge, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }
+
+  function getResizedDockRect(edge, rect, width, height) {
+    if (edge === "left") {
+      return { left: rect.left, top: rect.top, right: rect.left + width, bottom: rect.top + height, width, height };
+    }
+    if (edge === "right") {
+      return { left: rect.right - width, top: rect.top, right: rect.right, bottom: rect.top + height, width, height };
+    }
+    if (edge === "top") {
+      return { left: rect.left, top: rect.top, right: rect.left + width, bottom: rect.top + height, width, height };
+    }
+    return { left: rect.right - width, top: rect.bottom - height, right: rect.right, bottom: rect.bottom, width, height };
+  }
+
+  function getResizeCornerByEdge(edge) {
+    if (edge === "right") return "bottom-left";
+    if (edge === "bottom") return "top-left";
+    return "bottom-right";
+  }
+
   // 悬浮球
   const ball = document.createElement("div");
   ball.id = "ld-toolbox-ball";
   ball.innerHTML = '<span class="ball-logo">L</span>';
   document.body.appendChild(ball);
 
-  function positionBall(side, offset, animate) {
-    if (animate) ball.style.transition = "all .3s ease";
-    else ball.style.transition = "none";
-    const size = 46;
-    const hideAmount = size * 0.65; // 藏2/3，露出的弧形像椭圆切面
-    const top = Math.max(size / 2, Math.min(window.innerHeight - size / 2, offset * window.innerHeight));
-    ball.style.top = top + "px";
-    ball.style.transform = "translateY(-50%)";
-    ball.className = "side-" + side;
-    if (side === "right") {
-      ball.style.right = -hideAmount + "px";
-      ball.style.left = "auto";
+  function positionBall(edge, offset, animate) {
+    ball.style.transition = animate ? "" : "none";
+    const hideAmount = BALL_SIZE * BALL_HIDE_RATIO;
+    const centerX = clamp(offset * window.innerWidth, BALL_SIZE / 2, window.innerWidth - BALL_SIZE / 2);
+    const centerY = clamp(offset * window.innerHeight, BALL_SIZE / 2, window.innerHeight - BALL_SIZE / 2);
+    ball.classList.remove("side-top", "side-right", "side-bottom", "side-left");
+    ball.classList.add(`side-${edge}`);
+    ball.style.top = "auto";
+    ball.style.right = "auto";
+    ball.style.bottom = "auto";
+    ball.style.left = "auto";
+    if (edge === "left") {
+      ball.style.left = `${-hideAmount}px`;
+      ball.style.top = `${centerY}px`;
+      ball.style.transform = "translateY(-50%)";
+    } else if (edge === "right") {
+      ball.style.right = `${-hideAmount}px`;
+      ball.style.top = `${centerY}px`;
+      ball.style.transform = "translateY(-50%)";
+    } else if (edge === "top") {
+      ball.style.top = `${-hideAmount}px`;
+      ball.style.left = `${centerX}px`;
+      ball.style.transform = "translateX(-50%)";
     } else {
-      ball.style.left = -hideAmount + "px";
-      ball.style.right = "auto";
+      ball.style.bottom = `${-hideAmount}px`;
+      ball.style.left = `${centerX}px`;
+      ball.style.transform = "translateX(-50%)";
     }
+    if (!animate) requestAnimationFrame(() => { ball.style.transition = ""; });
   }
-  positionBall(state.ballSide, state.ballOffset, false);
+  positionBall(state.dockEdge, state.dockOffset, false);
+
+  function syncBallVisibility() {
+    const visible = state.ballVisible && !state.panelOpen;
+    ball.classList.toggle("hidden", !visible);
+    ball.style.opacity = visible ? "1" : "0";
+    ball.style.pointerEvents = visible ? "auto" : "none";
+  }
 
   // 拖拽逻辑
   let dragging = false, dragStartX, dragStartY, hasMoved;
@@ -1042,23 +1196,22 @@
     const dx = e.clientX - dragStartX, dy = e.clientY - dragStartY;
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasMoved = true;
     if (!hasMoved) return;
-    ball.style.left = (e.clientX - 23) + "px";
+    ball.style.left = e.clientX + "px";
     ball.style.right = "auto";
-    ball.style.top = (e.clientY) + "px";
-    ball.style.transform = "translateY(-50%)";
+    ball.style.bottom = "auto";
+    ball.style.top = e.clientY + "px";
+    ball.style.transform = "translate(-50%, -50%)";
   });
   document.addEventListener("mouseup", (e) => {
     if (!dragging) return;
     dragging = false;
     if (!hasMoved) { togglePanel(!state.panelOpen); return; }
-    // 吸附到最近的左/右边缘
-    const midX = window.innerWidth / 2;
-    state.ballSide = e.clientX < midX ? "left" : "right";
-    state.ballOffset = Math.max(0.05, Math.min(0.95, e.clientY / window.innerHeight));
-    GM_setValue("ld_ballSide", state.ballSide);
-    GM_setValue("ld_ballOffset", state.ballOffset);
+    state.dockEdge = getClosestEdgeFromPoint(e.clientX, e.clientY);
+    state.dockOffset = getDockOffsetFromPoint(state.dockEdge, e.clientX, e.clientY);
+    persistDockState();
     updatePanelSide();
-    positionBall(state.ballSide, state.ballOffset, true);
+    positionBall(state.dockEdge, state.dockOffset, true);
+    applyPanelLayout(true);
   });
 
   // ESC 提示
@@ -1070,7 +1223,8 @@
   const panel = document.createElement("div");
   panel.id = "ld-toolbox-panel";
   panel.dataset.theme = state.theme;
-  panel.className = `side-${state.ballSide}`;
+  panel.className = `side-${state.dockEdge}`;
+  panel.dataset.resizeCorner = getResizeCornerByEdge(state.dockEdge);
   panel.innerHTML = `
     <div class="ld-panel-header">
       <span class="title">Linux.do 工具箱</span>
@@ -1089,15 +1243,182 @@
     <div class="ld-tab-content" data-tab="1"><div class="ld-loading"><div class="spinner"></div><div>加载中...</div></div></div>
     <div class="ld-tab-content" data-tab="2"></div>
     <div class="ld-tab-content" data-tab="3"></div>
+    <div class="ld-panel-resizer" aria-hidden="true"></div>
   `;
   document.body.appendChild(panel);
+  const panelHeader = panel.querySelector(".ld-panel-header");
+  const panelResizer = panel.querySelector(".ld-panel-resizer");
+
+  function getPanelDockMetrics() {
+    const width = clampPanelWidth(state.panelWidth);
+    const height = clampPanelHeight(state.panelHeight);
+    const maxLeft = Math.max(PANEL_VIEWPORT_MARGIN, window.innerWidth - width - PANEL_VIEWPORT_MARGIN);
+    const maxTop = Math.max(PANEL_VIEWPORT_MARGIN, window.innerHeight - height - PANEL_VIEWPORT_MARGIN);
+    const centerX = clamp(
+      state.dockOffset * window.innerWidth,
+      PANEL_VIEWPORT_MARGIN + width / 2,
+      window.innerWidth - PANEL_VIEWPORT_MARGIN - width / 2
+    );
+    const centerY = clamp(
+      state.dockOffset * window.innerHeight,
+      PANEL_VIEWPORT_MARGIN + height / 2,
+      window.innerHeight - PANEL_VIEWPORT_MARGIN - height / 2
+    );
+    const metrics = {
+      width,
+      height,
+      top: "auto",
+      right: "auto",
+      bottom: "auto",
+      left: "auto",
+      shiftX: 0,
+      shiftY: 0,
+    };
+    if (state.dockEdge === "left") {
+      metrics.left = "0px";
+      metrics.top = `${clamp(centerY - height / 2, PANEL_VIEWPORT_MARGIN, maxTop)}px`;
+      metrics.shiftX = -(width + PANEL_VIEWPORT_MARGIN * 2);
+    } else if (state.dockEdge === "right") {
+      metrics.right = "0px";
+      metrics.top = `${clamp(centerY - height / 2, PANEL_VIEWPORT_MARGIN, maxTop)}px`;
+      metrics.shiftX = width + PANEL_VIEWPORT_MARGIN * 2;
+    } else if (state.dockEdge === "top") {
+      metrics.top = "0px";
+      metrics.left = `${clamp(centerX - width / 2, PANEL_VIEWPORT_MARGIN, maxLeft)}px`;
+      metrics.shiftY = -(height + PANEL_VIEWPORT_MARGIN * 2);
+    } else {
+      metrics.bottom = "0px";
+      metrics.left = `${clamp(centerX - width / 2, PANEL_VIEWPORT_MARGIN, maxLeft)}px`;
+      metrics.shiftY = height + PANEL_VIEWPORT_MARGIN * 2;
+    }
+    return metrics;
+  }
 
   function updatePanelSide() {
-    panel.classList.remove("side-left", "side-right");
-    panel.classList.add(`side-${state.ballSide}`);
+    panel.classList.remove("side-top", "side-right", "side-bottom", "side-left");
+    panel.classList.add(`side-${state.dockEdge}`);
+    panel.dataset.resizeCorner = getResizeCornerByEdge(state.dockEdge);
+  }
+
+  function syncEffectCanvasSize() {
+    const width = Math.max(1, panel.clientWidth || state.panelWidth);
+    const height = Math.max(1, panel.clientHeight || state.panelHeight);
+    if (particleCanvas) {
+      particleCanvas.width = width;
+      particleCanvas.height = height;
+    }
+    if (streamCanvas) {
+      streamCanvas.width = width;
+      streamCanvas.height = height;
+    }
+  }
+
+  function applyPanelLayout(animate) {
+    const metrics = getPanelDockMetrics();
+    state.panelWidth = metrics.width;
+    state.panelHeight = metrics.height;
+    if (!animate) panel.style.transition = "none";
+    updatePanelSide();
+    panel.style.width = `${metrics.width}px`;
+    panel.style.height = `${metrics.height}px`;
+    panel.style.top = metrics.top;
+    panel.style.right = metrics.right;
+    panel.style.bottom = metrics.bottom;
+    panel.style.left = metrics.left;
+    panel.style.transform = state.panelOpen
+      ? "translate3d(0, 0, 0)"
+      : `translate3d(${metrics.shiftX}px, ${metrics.shiftY}px, 0)`;
+    panel.style.pointerEvents = state.panelOpen ? "auto" : "none";
+    if (!animate) requestAnimationFrame(() => { if (!panel.classList.contains("dragging")) panel.style.transition = ""; });
+    syncEffectCanvasSize();
   }
 
   // ==================== 面板交互 ====================
+  let panelDragging = false, panelDragMoved = false, panelDragOffsetX = 0, panelDragOffsetY = 0, panelDragWidth = 0, panelDragHeight = 0;
+  let panelResizing = false, resizeStartX = 0, resizeStartY = 0, resizeStartWidth = 0, resizeStartHeight = 0;
+
+  panelHeader.addEventListener("mousedown", (e) => {
+    if (e.button !== 0 || e.target.closest("button")) return;
+    const rect = panel.getBoundingClientRect();
+    panelDragging = true;
+    panelDragMoved = false;
+    panelDragOffsetX = e.clientX - rect.left;
+    panelDragOffsetY = e.clientY - rect.top;
+    panelDragWidth = rect.width;
+    panelDragHeight = rect.height;
+    panel.classList.add("dragging");
+    panel.style.transition = "none";
+    e.preventDefault();
+  });
+
+  panelResizer.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    panelResizing = true;
+    resizeStartX = e.clientX;
+    resizeStartY = e.clientY;
+    resizeStartWidth = panel.clientWidth || state.panelWidth;
+    resizeStartHeight = panel.clientHeight || state.panelHeight;
+    panel.classList.add("dragging");
+    panel.style.transition = "none";
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (panelDragging) {
+      const nextLeft = clamp(
+        e.clientX - panelDragOffsetX,
+        PANEL_VIEWPORT_MARGIN,
+        Math.max(PANEL_VIEWPORT_MARGIN, window.innerWidth - panelDragWidth - PANEL_VIEWPORT_MARGIN)
+      );
+      const nextTop = clamp(
+        e.clientY - panelDragOffsetY,
+        PANEL_VIEWPORT_MARGIN,
+        Math.max(PANEL_VIEWPORT_MARGIN, window.innerHeight - panelDragHeight - PANEL_VIEWPORT_MARGIN)
+      );
+      panelDragMoved = true;
+      panel.style.left = `${nextLeft}px`;
+      panel.style.top = `${nextTop}px`;
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+      panel.style.transform = "translate3d(0, 0, 0)";
+      return;
+    }
+    if (!panelResizing) return;
+    const rect = panel.getBoundingClientRect();
+    const dx = e.clientX - resizeStartX;
+    const dy = e.clientY - resizeStartY;
+    const resizeCorner = panel.dataset.resizeCorner || "bottom-right";
+    const nextWidth = clampPanelWidth(resizeCorner.includes("left") ? resizeStartWidth - dx : resizeStartWidth + dx);
+    const nextHeight = clampPanelHeight(resizeCorner.includes("top") ? resizeStartHeight - dy : resizeStartHeight + dy);
+    state.panelWidth = nextWidth;
+    state.panelHeight = nextHeight;
+    state.dockOffset = getDockOffsetFromRect(state.dockEdge, getResizedDockRect(state.dockEdge, rect, nextWidth, nextHeight));
+    applyPanelLayout(false);
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (panelDragging) {
+      panelDragging = false;
+      panel.classList.remove("dragging");
+      panel.style.transition = "";
+      if (panelDragMoved) {
+        const rect = panel.getBoundingClientRect();
+        state.dockEdge = getClosestEdgeFromRect(rect);
+        state.dockOffset = getDockOffsetFromRect(state.dockEdge, rect);
+        persistDockState();
+        positionBall(state.dockEdge, state.dockOffset, true);
+      }
+      applyPanelLayout(true);
+    }
+    if (!panelResizing) return;
+    panelResizing = false;
+    panel.classList.remove("dragging");
+    persistDockState();
+    persistPanelSize();
+    applyPanelLayout(false);
+  });
+
   panel.querySelector(".ld-panel-close").addEventListener("click", () => togglePanel(false));
   const themeIcons = { dark: "☀️", light: "🌊", ocean: "🌸", pink: "🔴", red: "⬜", white: "🌈", gradient: "✨", particle: "💗", pinkwhite: "👑", royalgold: "🌊", streamline: "🌙" };
   const themeOrder = ["dark", "light", "ocean", "pink", "red", "white", "gradient", "particle", "pinkwhite", "royalgold", "streamline"];
@@ -1267,6 +1588,32 @@
   const tabContents = panel.querySelectorAll(".ld-tab-content");
   tabBtns.forEach((b) => b.addEventListener("click", () => switchTab(parseInt(b.dataset.tab))));
 
+  if (typeof ResizeObserver === "function") {
+    const panelResizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry || panelDragging) return;
+      const width = clampPanelWidth(entry.contentRect.width);
+      const height = clampPanelHeight(entry.contentRect.height);
+      if (width !== state.panelWidth || height !== state.panelHeight) {
+        state.panelWidth = width;
+        state.panelHeight = height;
+        persistPanelSize();
+        applyPanelLayout(false);
+      } else {
+        syncEffectCanvasSize();
+      }
+    });
+    panelResizeObserver.observe(panel);
+  }
+
+  window.addEventListener("resize", () => {
+    state.panelWidth = clampPanelWidth(state.panelWidth);
+    state.panelHeight = clampPanelHeight(state.panelHeight);
+    persistPanelSize();
+    positionBall(state.dockEdge, state.dockOffset, false);
+    applyPanelLayout(false);
+  });
+
   function switchTab(i) {
     state.activeTab = i;
     GM_setValue("ld_activeTab", i);
@@ -1287,10 +1634,8 @@
   function togglePanel(open) {
     state.panelOpen = open;
     panel.classList.toggle("open", open);
-    // 打开面板时球消失，关闭面板时球出现
-    ball.style.transition = "opacity .3s ease";
-    ball.style.opacity = open ? "0" : "1";
-    ball.style.pointerEvents = open ? "none" : "auto";
+    applyPanelLayout(true);
+    syncBallVisibility();
     if (open) switchTab(state.activeTab);
   }
 
@@ -1299,7 +1644,7 @@
     if (e.key === "Escape") {
       if (state.panelOpen) { togglePanel(false); return; }
       state.ballVisible = !state.ballVisible;
-      ball.classList.toggle("hidden", !state.ballVisible);
+      syncBallVisibility();
       escHint.textContent = state.ballVisible ? "工具箱已显示" : "工具箱已隐藏 (按 ESC 恢复)";
       escHint.classList.add("show");
       clearTimeout(escTimer);
@@ -1308,9 +1653,12 @@
   });
 
   if (state.shouldAutoOpenPanel) {
+    applyPanelLayout(false);
     togglePanel(true);
     state.shouldAutoOpenPanel = false;
   } else {
+    applyPanelLayout(false);
+    syncBallVisibility();
     switchTab(state.activeTab);
   }
 
