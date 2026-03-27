@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Linux.do 工具箱
 // @namespace    https://linux.do/
-// @version      3.9.2
-// @description  悬浮球工具箱：个人信息（升级条件+积分+CDK）、时间线、快速回复、自动刷贴。可拖拽悬浮球，11主题切换，按 ESC 显示/隐藏。
+// @version      3.10.0
+// @description  悬浮球工具箱：个人信息（升级条件+积分+CDK）、时间线、快速回复、自动刷贴。可拖拽悬浮球，13主题切换，按 ESC 显示/隐藏。
 // @author       You
 // @match        https://linux.do/*
 // @match        https://cdk.linux.do/*
@@ -313,6 +313,46 @@
       --gold: #d97706;
       --cyan: #0891b2;
       --scrollbar: rgba(30,100,180,.15);
+    }
+    #ld-toolbox-panel[data-theme="sunset"] {
+      --bg-main: linear-gradient(135deg, #fff1dc 0%, #ffd8c2 45%, #ffc3d1 100%);
+      --bg-card: rgba(214,92,59,.08);
+      --bg-card-hover: rgba(214,92,59,.14);
+      --bg-header: rgba(214,92,59,.08);
+      --bg-input: rgba(214,92,59,.06);
+      --text-1: #5e2a1f;
+      --text-2: #7a3b2b;
+      --text-3: #9d5b4a;
+      --text-4: #bf7e6d;
+      --text-5: #d9aa9d;
+      --border: rgba(214,92,59,.14);
+      --accent: #f97316;
+      --accent2: #ec4899;
+      --green: #16a34a;
+      --red: #dc2626;
+      --gold: #d97706;
+      --cyan: #ea580c;
+      --scrollbar: rgba(214,92,59,.18);
+    }
+    #ld-toolbox-panel[data-theme="forest"] {
+      --bg-main: linear-gradient(135deg, #081c15 0%, #0f2d22 45%, #1b4332 100%);
+      --bg-card: rgba(116,198,157,.08);
+      --bg-card-hover: rgba(116,198,157,.14);
+      --bg-header: rgba(116,198,157,.08);
+      --bg-input: rgba(116,198,157,.06);
+      --text-1: #ecfdf5;
+      --text-2: #d1fae5;
+      --text-3: rgba(209,250,229,.76);
+      --text-4: rgba(167,243,208,.56);
+      --text-5: rgba(110,231,183,.34);
+      --border: rgba(116,198,157,.16);
+      --accent: #34d399;
+      --accent2: #84cc16;
+      --green: #4ade80;
+      --red: #fb7185;
+      --gold: #facc15;
+      --cyan: #2dd4bf;
+      --scrollbar: rgba(116,198,157,.2);
     }
     /* 特效画布（粒子/流线共用样式） */
     #ld-particle-canvas, #ld-stream-canvas {
@@ -1229,7 +1269,7 @@
     <div class="ld-panel-header">
       <span class="title">Linux.do 工具箱</span>
       <div class="ld-header-actions">
-        <button class="ld-theme-btn" id="ld-theme-toggle" title="切换主题">${({ dark: "☀️", light: "🌊", ocean: "🌸", pink: "🔴", red: "⬜", white: "🌈", gradient: "✨", particle: "💗", pinkwhite: "👑", royalgold: "🌊", streamline: "🌙" })[state.theme] || "🌸"}</button>
+        <button class="ld-theme-btn" id="ld-theme-toggle" title="切换主题">${({ dark: "☀️", light: "🌊", ocean: "🌸", pink: "🔴", red: "⬜", white: "🌈", gradient: "✨", particle: "💗", pinkwhite: "👑", royalgold: "🌊", streamline: "🌙", sunset: "🌅", forest: "🌲" })[state.theme] || "🌸"}</button>
         <button class="ld-panel-close">✕</button>
       </div>
     </div>
@@ -1420,8 +1460,8 @@
   });
 
   panel.querySelector(".ld-panel-close").addEventListener("click", () => togglePanel(false));
-  const themeIcons = { dark: "☀️", light: "🌊", ocean: "🌸", pink: "🔴", red: "⬜", white: "🌈", gradient: "✨", particle: "💗", pinkwhite: "👑", royalgold: "🌊", streamline: "🌙" };
-  const themeOrder = ["dark", "light", "ocean", "pink", "red", "white", "gradient", "particle", "pinkwhite", "royalgold", "streamline"];
+  const themeIcons = { dark: "☀️", light: "🌊", ocean: "🌸", pink: "🔴", red: "⬜", white: "🌈", gradient: "✨", particle: "💗", pinkwhite: "👑", royalgold: "🌊", streamline: "🌙", sunset: "🌅", forest: "🌲" };
+  const themeOrder = ["dark", "light", "ocean", "pink", "red", "white", "gradient", "particle", "pinkwhite", "royalgold", "streamline", "sunset", "forest"];
   document.getElementById("ld-theme-toggle").addEventListener("click", () => {
     const oldTheme = state.theme;
     const idx = (themeOrder.indexOf(state.theme) + 1) % themeOrder.length;
@@ -3365,5 +3405,5 @@
   // 初始化调用（延迟到 Tab 渲染之后）
   setTimeout(() => resumeAutoRead(), 500);
 
-  console.log("[Linux.do 工具箱] v3.9.2 已加载");
+  console.log("[Linux.do 工具箱] v3.10.0 已加载");
 })();
