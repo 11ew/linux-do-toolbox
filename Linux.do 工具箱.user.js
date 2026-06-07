@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do 工具箱
 // @namespace    https://linux.do/
-// @version      3.10.0
+// @version      3.10.2
 // @description  悬浮球工具箱：个人信息（升级条件+积分+CDK）、时间线、快速回复、自动刷贴。可拖拽悬浮球，13主题切换，按 ESC 显示/隐藏。
 // @author       You
 // @match        https://linux.do/*
@@ -10,6 +10,7 @@
 // @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_openInTab
 // @connect      connect.linux.do
 // @connect      credit.linux.do
 // @connect      cdk.linux.do
@@ -517,6 +518,19 @@
       transition: all .2s;
     }
     .ld-jump-btn:hover { background: var(--bg-card-hover); color: var(--text-1); }
+    .ld-site-login-row {
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px;
+      margin: 8px 0 12px;
+    }
+    .ld-site-login-row .ld-jump-btn {
+      padding: 6px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ld-site-login-all {
+      color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent2));
+    }
+    .ld-site-login-all:hover {
+      color: #fff; box-shadow: 0 2px 12px rgba(102,126,234,.35);
+    }
     .ld-card {
       background: var(--bg-card); padding: 10px 12px;
       border-radius: 8px; margin-bottom: 8px;
@@ -570,6 +584,9 @@
     .ld-credit-main .lbl { font-size: 11px; color: var(--text-4); margin-bottom: 4px; }
     .ld-credit-main .val { font-size: 30px; font-weight: 800; }
     .ld-credit-gold { background: linear-gradient(135deg, rgba(255,215,0,.15) 0%, rgba(255,165,0,.1) 100%); border-color: rgba(255,215,0,.3); }
+    .ld-credit-positive { color: var(--green); }
+    .ld-credit-negative { color: var(--red); }
+    .ld-credit-neutral { color: var(--text-3); }
     .ld-credit-gold .val { color: var(--gold); text-shadow: 0 2px 8px rgba(255,215,0,.3); }
     .ld-info-row {
       display: flex; justify-content: space-between; align-items: center;
@@ -1707,7 +1724,11 @@
     const ct = tabContents[0];
     const username = getCurrentUsername();
     if (!username) { ct.innerHTML = '<div class="ld-loading">请先登录 linux.do</div>'; return; }
-    if (state.userDataCache && !force) { renderUserInfo(); return; }
+    if (state.userDataCache && !force) {
+      renderUserInfo();
+      loadInfoSupplementPanels();
+      return;
+    }
     ct.innerHTML = '<div class="ld-loading"><div class="spinner"></div><div>加载用户数据...</div></div>';
     try {
       const [profileData, summaryData] = await Promise.all([
@@ -1722,8 +1743,7 @@
         connectData, username,
       };
       renderUserInfo();
-      loadCreditInfo();
-      loadCdkInfo();
+      loadInfoSupplementPanels();
     } catch (e) {
       console.error("[工具箱] 加载用户信息失败:", e);
       ct.innerHTML = '<div class="ld-loading">加载失败，请稍后重试</div>';
@@ -1752,6 +1772,13 @@
         <div class="ld-stat-card"><div class="ld-stat-value">${(s.likes_given ?? 0).toLocaleString()}</div><div class="ld-stat-label">送赞</div></div>
         <div class="ld-stat-card"><div class="ld-stat-value">${(s.likes_received ?? 0).toLocaleString()}</div><div class="ld-stat-label">获赞</div></div>
       </div>
+      <div class="ld-site-login-row">
+        <button class="ld-jump-btn" data-jump="main">主站</button>
+        <button class="ld-jump-btn" data-jump="credit">Credit</button>
+        <button class="ld-jump-btn" data-jump="cdk">CDK</button>
+        <button class="ld-jump-btn" data-jump="ldc">LDC</button>
+        <button class="ld-jump-btn ld-site-login-all" data-action="login-all">一键登录</button>
+      </div>
     `;
 
     // === 升级条件（折叠） ===
@@ -1773,7 +1800,7 @@
       <span>💰 Credit 积分</span>
       <div>
         <span class="ld-brief-val ld-brief-jump" id="ld-credit-brief" data-jump="credit">--</span>
-        <button class="ld-jump-btn" data-jump="credit">登录</button>
+        <button class="ld-jump-btn ld-info-state-btn" data-jump="credit">登录</button>
         <button class="ld-expand-btn" data-target="ld-credit-detail">▶</button>
         <button class="ld-refresh-btn" data-action="refresh-credit">刷新</button>
       </div>
@@ -1782,12 +1809,26 @@
     html += `<div id="ld-credit-area" class="ld-card"><div class="ld-loading" style="padding:10px;">加载中...</div></div>`;
     html += `</div>`;
 
+    // === LDC 收入反馈（折叠） ===
+    html += `<div class="ld-section-title">
+      <span>📈 LDC 收入反馈</span>
+      <div>
+        <span class="ld-brief-val ld-brief-jump" id="ld-ldc-brief" data-jump="ldc">--</span>
+        <button class="ld-jump-btn" data-jump="ldc">LDC</button>
+        <button class="ld-expand-btn" data-target="ld-ldc-detail">▶</button>
+        <button class="ld-refresh-btn" data-action="refresh-ldc">刷新</button>
+      </div>
+    </div>`;
+    html += `<div id="ld-ldc-detail" class="ld-detail-section collapsed">`;
+    html += `<div id="ld-ldc-area" class="ld-card"><div class="ld-loading" style="padding:10px;">加载中...</div></div>`;
+    html += `</div>`;
+
     // === CDK（折叠） ===
     html += `<div class="ld-section-title">
       <span>🎮 CDK 分数</span>
       <div>
         <span class="ld-brief-val cyan ld-brief-jump" id="ld-cdk-brief" data-jump="cdk">--</span>
-        <button class="ld-jump-btn" data-jump="cdk">登录</button>
+        <button class="ld-jump-btn ld-info-state-btn" data-jump="cdk">登录</button>
         <button class="ld-expand-btn" data-target="ld-cdk-detail">▶</button>
         <button class="ld-refresh-btn" data-action="refresh-cdk">刷新</button>
       </div>
@@ -1811,18 +1852,31 @@
     // 绑定刷新按钮
     ct.querySelectorAll(".ld-refresh-btn").forEach((b) => {
       if (b.dataset.action === "refresh-credit") b.addEventListener("click", () => loadCreditInfo(true));
+      else if (b.dataset.action === "refresh-ldc") b.addEventListener("click", () => loadLdcFeedback());
       else if (b.dataset.action === "refresh-cdk") b.addEventListener("click", () => loadCdkInfo(true));
       else if (b.dataset.action === "refresh-all") b.addEventListener("click", () => { state.userDataCache = null; loadUserInfo(true); });
     });
 
+    ct.querySelector('[data-action="login-all"]')?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openAllLoginSites();
+    });
+
     // 绑定跳转：未登录去登录页，已登录去详情页
     ct.querySelectorAll(".ld-jump-btn, .ld-brief-jump").forEach((el) => {
+      if (!el.dataset.jump) return;
       el.addEventListener("click", (e) => {
         e.stopPropagation();
         openInfoSite(el.dataset.jump);
       });
     });
     syncInfoJumpButtons();
+  }
+
+  function loadInfoSupplementPanels() {
+    loadCreditInfo();
+    loadLdcFeedback();
+    loadCdkInfo();
   }
 
   function getUpgradeBrief(tl, data) {
@@ -2045,20 +2099,100 @@
     renderCreditInfo(area, userData, dailyStats, leaderboard);
   }
 
+  async function loadLdcFeedback() {
+    const area = document.getElementById("ld-ldc-area");
+    if (!area) return;
+
+    area.innerHTML = '<div style="text-align:center;padding:8px;font-size:12px;color:var(--text-4);">加载 LDC 收入反馈...</div>';
+
+    const creditProfile = await fetchCreditUserInfo();
+    const communityBaseline = readCreditCommunityBalance(creditProfile);
+    const mainProfileScore = await fetchMainProfileScore();
+
+    if (!Number.isFinite(communityBaseline) || !Number.isFinite(mainProfileScore)) {
+      updateBriefVal("ld-ldc-brief", "未登录");
+      area.innerHTML = `<div class="ld-login-prompt">无法获取 LDC 收入反馈<br><a href="https://credit.linux.do" target="_blank" class="ld-login-btn">去登录 Credit</a></div>`;
+      return;
+    }
+
+    renderLdcFeedback(area, { communityBaseline, mainProfileScore });
+  }
+
+  function readCreditCommunityBalance(creditProfile) {
+    if (!creditProfile) return NaN;
+    return parseFloat(creditProfile["community-balance"] ?? creditProfile.community_balance);
+  }
+
+  async function fetchMainProfileScore() {
+    const cachedProfileScore = parseFloat(state.userDataCache?.user?.gamification_score);
+    if (Number.isFinite(cachedProfileScore)) return cachedProfileScore;
+
+    const username = state.userDataCache?.username || getCurrentUsername();
+    if (!username) return NaN;
+
+    const profilePayload = await safeFetchJson(`${BASE_URL}/u/${encodeURIComponent(username)}.json`);
+    return parseFloat(profilePayload?.user?.gamification_score);
+  }
+
+  function renderLdcFeedback(area, scorePair) {
+    const feedbackDelta = scorePair.mainProfileScore - scorePair.communityBaseline;
+    const formattedDelta = formatSignedScore(feedbackDelta);
+    const toneClass = getScoreToneClass(feedbackDelta);
+
+    updateBriefVal("ld-ldc-brief", formattedDelta);
+    const brief = document.getElementById("ld-ldc-brief");
+    if (brief) brief.className = `ld-brief-val ld-brief-jump ${toneClass}`;
+
+    area.innerHTML = `
+      <div class="ld-credit-main">
+        <div class="lbl">收入反馈</div>
+        <div class="val ${toneClass}">${escapeHtml(formattedDelta)}</div>
+      </div>
+      <div class="ld-info-row"><span class="label">当前分</span><span class="value">${escapeHtml(scorePair.mainProfileScore.toFixed(2))}</span></div>
+      <div class="ld-info-row"><span class="label">基准值</span><span class="value">${escapeHtml(scorePair.communityBaseline.toFixed(2))}</span></div>
+      <div style="font-size:10px;color:var(--text-5);margin-top:6px;padding:6px 8px;background:var(--bg-card);border-radius:6px;">仅供参考，可能有误差</div>
+      <div style="text-align:right;margin-top:6px;"><a href="https://ldcstore.com" target="_blank" class="ld-link-btn">打开 LDC →</a></div>
+    `;
+  }
+
+  function formatSignedScore(score) {
+    return `${score > 0 ? "+" : ""}${score.toFixed(2)}`;
+  }
+
+  function getScoreToneClass(score) {
+    if (score > 0) return "ld-credit-positive";
+    if (score < 0) return "ld-credit-negative";
+    return "ld-credit-neutral";
+  }
+
   function updateBriefVal(id, text) {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
   }
 
   function getInfoSiteUrl(type) {
+    if (type === "main") return "https://linux.do/login";
     if (type === "credit") return state.creditLoggedIn ? "https://credit.linux.do/home" : "https://credit.linux.do";
     if (type === "cdk") return state.cdkLoggedIn ? "https://cdk.linux.do/dashboard" : "https://cdk.linux.do";
+    if (type === "ldc") return "https://ldcstore.com";
     return "";
   }
 
   function openInfoSite(type) {
     const url = getInfoSiteUrl(type);
     if (!url) return;
+    openToolboxTab(url);
+  }
+
+  function openAllLoginSites() {
+    ["main", "credit", "cdk", "ldc"].forEach((siteType) => openInfoSite(siteType));
+  }
+
+  function openToolboxTab(url) {
+    if (typeof GM_openInTab === "function") {
+      GM_openInTab(url, { active: false, insert: true, setParent: true });
+      return;
+    }
     window.open(url, "_blank", "noopener");
   }
 
@@ -2067,7 +2201,7 @@
       { type: "credit", loggedIn: state.creditLoggedIn },
       { type: "cdk", loggedIn: state.cdkLoggedIn },
     ].forEach(({ type, loggedIn }) => {
-      const btn = document.querySelector(`.ld-jump-btn[data-jump="${type}"]`);
+      const btn = document.querySelector(`.ld-info-state-btn[data-jump="${type}"]`);
       if (btn) {
         btn.textContent = loggedIn ? "详情" : "登录";
         btn.title = loggedIn ? "已登录，点击查看详情页" : "未登录，点击前往登录页";
